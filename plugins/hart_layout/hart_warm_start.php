@@ -664,7 +664,7 @@ function hart_tracked_sim_overrides(array $overrides = [])
  * Call after begin_session has opened the session (STG-SCULLY, fill, assign).
  * Ends with STG-SCULLY deferred at Scully for the next begin_session.
  */
-function hart_play_operating_session($dbc, array $config = [], array $fractions = null, $label = '')
+function hart_play_operating_session($dbc, array $config = [], ?array $fractions = null, $label = '')
 {
     $config = warm_start_merge_config(array_merge(
         hart_tracked_sim_overrides(),

@@ -819,7 +819,7 @@ function track_scale_reset_cached_weights($dbc = null, $preserve_calibration = t
     return $seed;
 }
 
-function track_scale_is_calibration_locked($dbc, array $seed = null)
+function track_scale_is_calibration_locked($dbc, ?array $seed = null)
 {
     $seed = $seed ?? track_scale_load_seed_state($dbc);
     if (empty($seed['calibration']['locked'])) {
