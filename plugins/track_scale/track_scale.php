@@ -1,5 +1,5 @@
 <?php
-require __DIR__ . '/track_scale_helpers.php';
+require_once __DIR__ . '/track_scale_helpers.php';
 require_once dirname(__DIR__, 2) . '/open_db.php';
 track_scale_session_init();
 $config = track_scale_load_config();
@@ -2750,12 +2750,12 @@ async function setSelectedTestCar(marks) {
 
 async function apiGet(action, params = {}) {
     const qs = new URLSearchParams({ action, ...params });
-    const res = await fetch('track_scale_ajax.php?' + qs.toString());
+    const res = await fetch('plugin.php?id=track_scale&page=ajax&' + qs.toString());
     return res.json();
 }
 
 async function apiPost(action, payload = {}) {
-    const res = await fetch('track_scale_ajax.php', {
+    const res = await fetch('plugin.php?id=track_scale&page=ajax', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, ...payload }),

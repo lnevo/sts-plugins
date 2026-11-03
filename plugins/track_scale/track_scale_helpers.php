@@ -144,6 +144,12 @@ function track_scale_session_log_path()
 
 function track_scale_now_unix()
 {
+    // Under a seeded simulation (STS_SIM_SEED, CLI only) the clock is fixed so
+    // seed.json-derived weights are reproducible between runs.
+    $sim_seed = getenv('STS_SIM_SEED');
+    if ($sim_seed !== false && is_numeric(trim((string) $sim_seed))) {
+        return 1700000000 + (int) trim((string) $sim_seed);
+    }
     return time();
 }
 
@@ -4187,7 +4193,7 @@ function track_scale_run_job_weigh($dbc, $job_name, $config = null)
         $tare = (float) ($profile['tare_tons'] ?? 27.0);
         // Use the full load state (net + cross-side balance shift) so the
         // automated weigh routes imbalanced loads to reload exactly like the
-        // interactive track-scale UI (track_scale_ajax.php). Fetching only the
+        // interactive track-scale UI (plugin.php?id=track_scale&page=ajax). Fetching only the
         // net drops balance_shift_tons and makes every car read in-tolerance.
         $load_state = track_scale_get_car_load_state($dbc, $marks, $target_net, $config);
         $true_net = (float) $load_state['true_net_tons'];

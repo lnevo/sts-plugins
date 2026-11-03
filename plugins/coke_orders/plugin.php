@@ -19,8 +19,16 @@ return [
         'coke_orders_plugin_guess_replenish',
     ],
 
+    'param_overrides' => [
+        'cancel_orders' => ['keep_prefixes' => ['default' => 'COKE-', 'placeholder' => 'e.g. COKE-']],
+        'drain_unfilled_orders' => ['keep_prefixes' => ['default' => 'COKE-', 'placeholder' => 'e.g. COKE-']],
+        'generate_orders' => ['exclude_prefixes' => ['placeholder' => 'e.g. COKE-,BULK-']],
+    ],
+
     'normalize_params' => [
         'replenish_coke_orders' => 'coke_orders_normalize_params',
+        'cancel_orders' => 'coke_orders_normalize_cancel_params',
+        'drain_unfilled_orders' => 'coke_orders_normalize_cancel_params',
     ],
 
     'dispatch_handlers' => [

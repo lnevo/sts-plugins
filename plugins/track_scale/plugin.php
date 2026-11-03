@@ -8,12 +8,16 @@ return [
     'version' => '1.0.0',
     'bootstrap' => __DIR__ . '/bootstrap.php',
     'helpers' => __DIR__ . '/track_scale_helpers.php',
+    'pages' => [
+        'index' => 'track_scale.php',
+        'ajax' => 'track_scale_ajax.php',
+    ],
 
     'operations_buttons' => [
         [
             'cid' => 'during',
             'after' => 'set_out_cars',
-            'href' => 'track_scale.php',
+            'page' => 'index',
             'icon' => 'bi-speedometer2',
             'title' => 'Track Scale',
             'stats' => [
@@ -49,9 +53,7 @@ return [
         'track_scale_plugin_guess_weigh_cars',
     ],
 
-    'gui_label_hooks' => [
-        'track_scale' => 'track_scale_plugin_gui_label_merge',
-    ],
+    'session_reset_hooks' => ['track_scale_plugin_session_reset'],
 
     'normalize_params' => [
         'track_scale' => 'track_scale_plugin_normalize_params',

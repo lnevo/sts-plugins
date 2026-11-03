@@ -1,8 +1,8 @@
 <?php
 // track_scale_ajax.php — AJAX API for track scale
 
-require dirname(__DIR__, 2) . '/open_db.php';
-require __DIR__ . '/track_scale_helpers.php';
+require_once dirname(__DIR__, 2) . '/open_db.php';
+require_once __DIR__ . '/track_scale_helpers.php';
 
 header('Content-Type: application/json');
 

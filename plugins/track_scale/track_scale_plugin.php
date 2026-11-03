@@ -70,6 +70,14 @@ function track_scale_plugin_gui_label_merge(array $params, array &$merged)
     }
 }
 
+/**
+ * Session restart / rewind: drop cached weights (core session_reset_hooks).
+ */
+function track_scale_plugin_session_reset($dbc, array $context)
+{
+    track_scale_reset_cached_weights($dbc, true);
+}
+
 function track_scale_plugin_normalize_params(array &$params)
 {
     if (!empty($params['commodity'])) {
@@ -118,6 +126,14 @@ function track_scale_catalog_definitions()
             'description' => 'Weigh loaded cars on a job train (or at the scale) for the selected commodity. Uses track scale config when commodity is blank. Min reloads floors how many cars in the current weigh batch must route to reload after the tolerance roll (0 disables; blank uses plugin config, usually 1).',
             'runnable' => true,
             'dispatch' => 'track_scale',
+            'client' => [
+                'hide_inline_params' => ['job', 'commodity', 'min_reloads'],
+                'derived' => [
+                    ['key' => 'job', 'from' => 'job', 'default' => 'train'],
+                    ['key' => 'commodity_suffix', 'from' => 'commodity', 'template' => ' ({value})'],
+                    ['key' => 'min_reloads_suffix', 'from' => 'min_reloads', 'template' => ' (min reloads {value})', 'pattern' => '^\\d+$'],
+                ],
+            ],
             'params' => [
                 operational_steps_catalog_job_param(false),
                 operational_steps_catalog_commodity_param(false),
@@ -143,6 +159,12 @@ function track_scale_catalog_definitions()
             'description' => 'Recalibrate the track scale. Performs a fresh random calibration when required (first use / out of service) or when the configured number of sessions have elapsed since the last calibration. Set to 1 to calibrate every session (steady in-tolerance routing); higher values let scale drift accumulate so more cars route to reload between calibrations. Run this before the Track Scale weigh step.',
             'runnable' => true,
             'dispatch' => 'calibrate_track_scale',
+            'client' => [
+                'hide_inline_params' => ['every_sessions'],
+                'plural' => [
+                    ['token' => 'session[s]', 'from' => 'every_sessions', 'one' => 'session', 'many' => 'sessions', 'min' => 1],
+                ],
+            ],
             'params' => [
                 [
                     'key' => 'every_sessions',
@@ -162,9 +184,9 @@ function track_scale_catalog_definitions()
             'adder' => false,
             'label' => 'Track Scale (STS GUI)',
             'gui_template' => 'Track Scale',
-            'description' => 'Weigh cars at track scale. GUI: track_scale.php.',
+            'description' => 'Weigh cars at track scale. GUI: plugin.php?id=track_scale.',
             'runnable' => false,
-            'gui_path' => '/sts/track_scale.php',
+            'gui_path' => '/sts/plugin.php?id=track_scale',
             'params' => [],
         ],
     ];

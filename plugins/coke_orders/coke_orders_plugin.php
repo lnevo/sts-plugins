@@ -18,6 +18,36 @@ function coke_orders_normalize_params(array &$params)
     $params['target_max'] = $target_max;
 }
 
+/**
+ * Map legacy keep_coke onto keep_prefixes (1 = add COKE-, 0 = remove it).
+ * A recipe with no keep_prefixes key at all (legacy) also gets COKE-.
+ */
+function coke_orders_normalize_cancel_params(array &$params)
+{
+    // A present keep_prefixes (even '') is left alone: an operator clearing the field wins.
+    $has_prefixes = array_key_exists('keep_prefixes', $params);
+    $has_legacy = array_key_exists('keep_coke', $params);
+    if ($has_prefixes && !$has_legacy) {
+        return;
+    }
+    $list = [];
+    foreach (explode(',', (string) ($params['keep_prefixes'] ?? '')) as $item) {
+        $item = trim($item);
+        if ($item !== '') {
+            $list[] = $item;
+        }
+    }
+    $keep = $has_legacy ? trim((string) $params['keep_coke']) : '1';
+    $list = array_values(array_filter($list, function ($item) {
+        return strcasecmp($item, 'COKE-') !== 0;
+    }));
+    if ($keep !== '0') {
+        $list[] = 'COKE-';
+    }
+    $params['keep_prefixes'] = implode(',', $list);
+    unset($params['keep_coke']);
+}
+
 function coke_orders_dispatch_replenish($dbc, array $step, array $def, array $params, array $config, array $result)
 {
     coke_orders_normalize_params($params);
