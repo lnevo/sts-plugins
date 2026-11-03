@@ -20,6 +20,7 @@ return [
         'advance_session' => 'hart_advance_session',
         'begin_session' => 'hart_begin_operating_session',
         'play_session' => 'hart_play_operating_session',
+        'tracked_overrides' => 'hart_tracked_sim_overrides',
         'prep_checks' => 'hart_evaluate_session_prep',
         'summary' => 'hart_summarize',
         'report_lines' => 'hart_format_begin_session_report',
