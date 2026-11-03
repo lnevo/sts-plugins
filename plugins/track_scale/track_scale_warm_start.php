@@ -111,7 +111,7 @@ function track_scale_run_ck1_scale_ops($dbc, $config = null)
         return $fail($stats, 'track scale out of service');
     }
 
-    $coke_stats = &warm_start_coke_stats();
+    $coke_stats = &hart_coke_stats();
     $scale_loc_id = track_scale_loading_location_id($dbc, $config);
 
     $rs = mysqli_query(
@@ -206,7 +206,7 @@ function track_scale_run_ck1_scale_ops($dbc, $config = null)
         $routing = $item['routing'] ?? 'outbound';
         track_scale_record_weigh_log($dbc, $marks, $weighing, $config);
 
-        if (warm_start_car_has_routing_order($dbc, $car_id, $routing, $config)) {
+        if (hart_car_has_routing_order($dbc, $car_id, $routing, $config)) {
             $stats['weighed']++;
             $coke_stats['weighed']++;
             if ($routing === 'reload') {
@@ -219,7 +219,7 @@ function track_scale_run_ck1_scale_ops($dbc, $config = null)
             continue;
         }
 
-        $waybill = warm_start_pick_coke_waybill($dbc, $car_id, $routing, $config);
+        $waybill = hart_pick_coke_waybill($dbc, $car_id, $routing, $config);
         if ($waybill === null) {
             $stats = $fail($stats, "No waybill for {$marks} (routing={$routing})");
             continue;
