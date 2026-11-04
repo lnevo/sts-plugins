@@ -1266,10 +1266,44 @@ function track_scale_preset()
     return [null, []];
 }
 
+/**
+ * Lay $over on $base key by key: a group (an array with named keys) merges into the
+ * group below it, so a file or preset lists only what it changes. Lists, numbers and
+ * text replace the value below whole, so a shipment list is never mixed with another.
+ */
+function track_scale_merge_config(array $base, array $over)
+{
+    foreach ($over as $key => $value) {
+        $below = $base[$key] ?? null;
+        if (is_array($value) && is_array($below) && !track_scale_is_list($value) && !track_scale_is_list($below)) {
+            $base[$key] = track_scale_merge_config($below, $value);
+        } else {
+            $base[$key] = $value;
+        }
+    }
+
+    return $base;
+}
+
+/** A JSON list ([...]); an empty array counts as a list, so [] still clears a list. */
+function track_scale_is_list(array $value)
+{
+    return $value === [] || array_keys($value) === range(0, count($value) - 1);
+}
+
 /** Built-in defaults with the layout preset on top: what applies before track_scale_config.json. */
 function track_scale_layered_defaults()
 {
-    return array_merge(track_scale_default_config(), track_scale_preset()[1]);
+    return track_scale_merge_config(track_scale_default_config(), track_scale_preset()[1]);
+}
+
+/** The config file laid key by key over $defaults; $defaults alone when it is missing or not a JSON object. */
+function track_scale_read_config_file($path, array $defaults)
+{
+    $raw = is_readable($path) ? (string) file_get_contents($path) : '';
+    $decoded = trim($raw) !== '' ? json_decode($raw, true) : null;
+
+    return (is_array($decoded) && !track_scale_is_list($decoded)) ? track_scale_merge_config($defaults, $decoded) : $defaults;
 }
 
 function &track_scale_config_ref()
@@ -1306,7 +1340,7 @@ function track_scale_load_config()
         return $config;
     }
 
-    $config = track_scale_read_json_file($path, $defaults);
+    $config = track_scale_read_config_file($path, $defaults);
     track_scale_apply_test_car_override($config);
     return $config;
 }

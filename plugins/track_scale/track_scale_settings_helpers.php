@@ -4,9 +4,9 @@
  */
 
 /**
- * Errors stop a save (not JSON, not an object). Warnings are shown: keys the plugin
- * does not read, a value of a different kind than its default, and default keys a
- * replaced group leaves out (the file replaces each top-level key whole).
+ * Errors stop a save (not JSON, not an object). Warnings are shown: top-level keys
+ * the plugin does not read, and a value of a different kind than its default. Keys a
+ * group leaves out are fine: groups merge key by key over the defaults.
  *
  * @return array{errors: list<string>, warnings: list<string>}
  */
@@ -43,14 +43,6 @@ function track_scale_settings_check($text, array $defaults)
         $have = $kind($value);
         if ($want !== $have && $want !== 'empty') {
             $out['warnings'][] = $key . ' is ' . $have . '; its default is ' . $want . '.';
-            continue;
-        }
-        if ($want === 'group' && !array_is_list($defaults[$key])) {
-            $missing = array_diff(array_keys($defaults[$key]), array_keys($value));
-            if ($missing !== []) {
-                $out['warnings'][] = $key . ' replaces the default group and leaves out ' . implode(', ', $missing)
-                    . '. Those keys are then not set from the defaults; copy them in from "In force" to be sure what is used.';
-            }
         }
     }
 
