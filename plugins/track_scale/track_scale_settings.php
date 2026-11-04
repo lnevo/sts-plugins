@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['action'] ?? '') =
 
 $file_text = is_readable($path) ? (string) file_get_contents($path) : '';
 $file = $file_text !== '' ? json_decode($file_text, true) : null;
-$effective = track_scale_read_json_file($path, $defaults);
+$effective = track_scale_read_config_file($path, $defaults);
 $report = track_scale_settings_check($file_text !== '' ? $file_text : '{}', $defaults);
 $shown = ($errors !== [] && isset($text)) ? $text
     : ($file_text !== '' ? $file_text : json_encode($defaults, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
@@ -86,7 +86,7 @@ sts_page_start([
 <div class="card ts-card mb-3">
   <div class="card-header"><i class="bi bi-filetype-json"></i> <?php echo sts_h(basename($path)); ?></div>
   <div class="card-body">
-    <p class="ts-muted">Each top-level key here replaces the default or preset value of the same name, whole: a group such as <code>simulation</code> or <code>calibration</code> must list every key it needs. Keys left out keep their default or preset value. Saving checks the JSON first and keeps the previous file as <code>.bak</code>.<?php echo $file_text === '' ? ' Shown below are the defaults with the preset, as a starting point.' : ''; ?></p>
+    <p class="ts-muted">List only what differs from the defaults and the preset: groups such as <code>simulation</code> or <code>calibration</code> merge key by key, so a key left out keeps its default or preset value. A list, such as the shipment codes, replaces the one below it whole. Saving checks the JSON first and keeps the previous file as <code>.bak</code>.<?php echo $file_text === '' ? ' Shown below are the defaults with the preset, as a starting point.' : ''; ?></p>
     <form method="post">
       <textarea class="form-control ts-json" name="config" rows="28" spellcheck="false"><?php echo sts_h($shown); ?></textarea>
       <button class="btn btn-primary mt-2" name="action" value="save"><i class="bi bi-save"></i> Save</button>
@@ -98,7 +98,7 @@ sts_page_start([
 <div class="card ts-card mb-3">
   <div class="card-header"><i class="bi bi-layers"></i> Preset from <?php echo sts_h($preset_id); ?></div>
   <div class="card-body">
-    <p class="ts-muted">The layout's own values, applied over the built-in defaults and under the file above. To change one, put the key in the file; the preset itself lives in that plugin.</p>
+    <p class="ts-muted">The layout's own values, merged over the built-in defaults and under the file above. To change one, put just that key in the file; the preset itself lives in that plugin.</p>
     <pre class="ts-pre"><?php echo sts_h(json_encode($preset, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)); ?></pre>
   </div>
 </div>
@@ -107,7 +107,7 @@ sts_page_start([
 <div class="card ts-card mb-3">
   <div class="card-header"><i class="bi bi-check2-circle"></i> In force now</div>
   <div class="card-body">
-    <p class="ts-muted">The built-in defaults, then the layout preset, then the file: each top-level key replaces the one below it whole. This is what the scale page and the workflow steps read; a key missing from a replaced group is not here.</p>
+    <p class="ts-muted">The built-in defaults, then the layout preset, then the file, merged key by key. This is what the scale page and the workflow steps read.</p>
     <pre class="ts-pre"><?php echo sts_h(json_encode($effective, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)); ?></pre>
   </div>
 </div>

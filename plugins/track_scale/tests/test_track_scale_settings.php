@@ -30,9 +30,9 @@ check('an unknown key is a warning', strpos($r['warnings'][0] ?? '', 'precsion')
 $r = track_scale_settings_check('{"precision": "3"}', $defaults);
 check('text where a number belongs is a warning', strpos($r['warnings'][0] ?? '', 'precision is text') !== false);
 $r = track_scale_settings_check('{"simulation": {"in_tolerance_percent": 85}}', $defaults);
-check('a group that leaves out default keys says which', strpos($r['warnings'][0] ?? '', 'min_reloads_per_weigh_batch') !== false);
+check('a group listing only what it changes is fine', $r === ['errors' => [], 'warnings' => []]);
 $r = track_scale_settings_check('{"shipments": {"outbound": ["A"]}}', $defaults);
-check('a partial shipments group is flagged too', strpos($r['warnings'][0] ?? '', 'reload') !== false);
+check('a partial shipments group is fine too', $r['warnings'] === []);
 
 $dir = sys_get_temp_dir() . '/ts_settings_' . getmypid();
 $path = $dir . '/track_scale_config.json';
