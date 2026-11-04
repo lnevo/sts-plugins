@@ -1,0 +1,117 @@
+{
+  "about": "HART: STS location codes and commodity codes to the Operations Pro names built 2026-11-02 (docs/ops/OPSPRO_MAPPING.md in the hart repo). A blank track keeps the car's JMRI track at that location, or takes the first one that accepts it.",
+  "locations": {
+    "WEST-YARD": {
+      "location": "West Yard"
+    },
+    "SOUTH-YARD": {
+      "location": "South Yard"
+    },
+    "SOUTH-SCALE": {
+      "location": "South Yard",
+      "track": "S-4"
+    },
+    "SCULLY-YARD": {
+      "location": "Scully Yard",
+      "track": "Scully Interchange"
+    },
+    "DEMMLER-YARD": {
+      "location": "Demmler Yard",
+      "track": "Demmler Interchange"
+    },
+    "SHEN-COKE-SHIPPING": {
+      "location": "Shenango Coke Works"
+    },
+    "ARIS-PELLETS": {
+      "location": "Aristech Plastics",
+      "track": "Pellet Unload"
+    },
+    "ARIS-CHEMICAL": {
+      "location": "Aristech Plastics",
+      "track": "Chemical Unload"
+    },
+    "ARIS-SHIPPING": {
+      "location": "Aristech Plastics",
+      "track": "Shipping Door"
+    },
+    "FERR-LPG": {
+      "location": "Ferrellgas",
+      "track": "LPG Unload"
+    },
+    "STUK-CRANE": {
+      "location": "A. Stucki Co.",
+      "track": "Crane Track"
+    },
+    "STUK-TEAM": {
+      "location": "A. Stucki Co.",
+      "track": "Team Track"
+    },
+    "KOSM-CEMENT": {
+      "location": "Kosmos Cement",
+      "track": "Cement Unload"
+    },
+    "KOSM-AGGREGATE": {
+      "location": "Kosmos Cement",
+      "track": "Aggregate Unload"
+    },
+    "CALG-COAL": {
+      "location": "Calgon Carbon",
+      "track": "Coal Unload"
+    },
+    "CALG-CARBON": {
+      "location": "Calgon Carbon",
+      "track": "Carbon Load"
+    },
+    "CALG-CHEMICAL": {
+      "location": "Calgon Carbon",
+      "track": "Chemical Unload"
+    }
+  },
+  "stations": {
+    "McKees Rocks-PA": {
+      "location": "McKees Rocks",
+      "track": "POHC Offline"
+    },
+    "Mckeesport-PA": {
+      "location": "McKeesport",
+      "track": "CSX Offline"
+    }
+  },
+  "loads": {
+    "ACTIVATEDCARBON": "Carbon",
+    "AGGREGATE": "Aggregate",
+    "ARGON": "Argon",
+    "CAUSTICSODA": "Caustic Soda",
+    "CEMENT": "Cement",
+    "COAL": "Coal",
+    "COKE": "Coke",
+    "ETHYLACRYLATE": "Ethyl Acrylate",
+    "FLUORESCENTLAMPS": "Fluorescent Lamps",
+    "FLUORESCENTTUBES": "Fluorescent Tubes",
+    "FORGEDCOMPONENTS": "Forgings",
+    "FROZENFOODS": "Frozen Foods",
+    "HYDROCHLORICACID": "Hydrochloric Acid",
+    "INDUSTRIALGASES": "Industrial Gases",
+    "LPG": "LPG",
+    "MACHINEDPARTS": "Machined Parts",
+    "METHYLMETHACRYLATE": "Methyl Methacrylate",
+    "PACKAGEDMEATS": "Packaged Meats",
+    "PHOSPHORCOMPOUNDS": "Phosphor Compounds",
+    "PHOSPHORICACID": "Phosphoric Acid",
+    "PLASTICPELLETS": "Pellets",
+    "PLASTICRESINS": "Plastic Resins",
+    "RAILWAYSPRINGS": "Railway Springs",
+    "SCRAPSTEEL": "Scrap Steel",
+    "STAINLESSBAR": "Stainless Bar",
+    "STAINLESSSLAB": "Stainless Slab",
+    "STEEL": "Steel",
+    "STEELBILLETS": "Steel Billets",
+    "STEELCOILS": "Steel Coils",
+    "STEELPLATE": "Steel Plate",
+    "STYRENEMONOMER": "Styrene Monomer",
+    "TINPLATE": "Tin Plate"
+  },
+  "skip_status": [
+    "Unavailable"
+  ]
+}
