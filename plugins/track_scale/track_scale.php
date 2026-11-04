@@ -1554,7 +1554,7 @@ $track_scale_test_car_options = track_scale_test_car_roster_options($config, $tr
         <div class="card mb-3">
             <div class="card-body">
                 <p class="visually-hidden cal-instructions">
-                    Scale test car <strong id="calTestCarMarks">COST1</strong>,
+                    Scale test car <strong id="calTestCarMarks"><?= htmlspecialchars($track_scale_test_car_marks !== '' ? $track_scale_test_car_marks : '—') ?></strong>,
                     <strong id="calTestCarLbs">80,000</strong> lbs /
                     <span id="calTestCarTons">40.00</span> t
                 </p>

@@ -93,8 +93,18 @@ function jo_track_list_id($location)
     return 'jo-tracks-' . substr(md5((string) $location), 0, 10);
 }
 
+// Links to every plugin's Settings page, so each one can be reached from the others.
+$settings_links = [];
+foreach (plugins_discover() as $settings_manifest) {
+    if (isset($settings_manifest['pages']['settings']) && ($settings_manifest['id'] ?? '') !== 'jmri_ops') {
+        $settings_links[] = ['href' => plugins_page_url($settings_manifest['id'], 'settings'),
+            'label' => ($settings_manifest['label'] ?? $settings_manifest['id']) . ' settings', 'icon' => 'bi-gear'];
+    }
+}
+
 sts_page_start([
     'title' => 'JMRI Sync Settings',
+    'links' => $settings_links,
     'icon' => 'bi-gear',
     'section' => 'ops',
     'back_href' => 'plugin.php?id=jmri_ops',

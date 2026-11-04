@@ -35,6 +35,19 @@ return [
 
     'delivery_complete_hooks' => ['hart_delivery_complete'],
 
+    // HART's values for track_scale and coke_orders (hart_presets.php).
+    'presets' => require __DIR__ . '/hart_presets.php',
+
+    // CK1 weighs with HART's own routine (hart_track_scale.php).
+    'track_scale_job_weigh' => ['CK1' => 'hart_track_scale_run_ck1_scale_ops'],
+
+    // Step editor defaults for HART's coke shipment codes.
+    'param_overrides' => [
+        'cancel_orders' => ['keep_prefixes' => ['default' => 'COKE-', 'placeholder' => 'e.g. COKE-']],
+        'drain_unfilled_orders' => ['keep_prefixes' => ['default' => 'COKE-', 'placeholder' => 'e.g. COKE-']],
+        'generate_orders' => ['exclude_prefixes' => ['placeholder' => 'e.g. COKE-,BULK-']],
+    ],
+
     'switchlist_section_normalize' => 'hart_switchlist_section_normalize',
 
     'wheel_report_extra_rows' => 'hart_wheel_report_extra_rows',
