@@ -1342,6 +1342,9 @@ $track_scale_test_car_options = track_scale_test_car_roster_options($config, $tr
                     Large controls
                 </label>
             </div>
+            <a href="plugin.php?id=track_scale&amp;page=settings" class="btn btn-outline-light btn-sm">
+                <i class="bi bi-gear"></i> Settings
+            </a>
             <a href="operations.php" class="btn btn-outline-light btn-sm">
                 <i class="bi bi-arrow-left"></i> Operations
             </a>

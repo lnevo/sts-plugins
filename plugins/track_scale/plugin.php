@@ -11,6 +11,7 @@ return [
     'pages' => [
         'index' => 'track_scale.php',
         'ajax' => 'track_scale_ajax.php',
+        'settings' => 'track_scale_settings.php',
     ],
 
     'operations_buttons' => [
