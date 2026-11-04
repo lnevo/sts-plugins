@@ -2,16 +2,18 @@
 /**
  * JMRI Operations sync — send car positions, loads and final destinations from STS to JMRI.
  *
- * Needs sts_car_sync.py running in JMRI (hart repo) and a url in /var/lib/sts/jmri_ops.json.
+ * Needs sts_car_sync.py running in JMRI. The JMRI address and the STS-to-JMRI names are
+ * settings (page 'settings', saved to jmri_ops.json in the STS config volume).
  */
 return [
     'id' => 'jmri_ops',
     'label' => 'JMRI Operations sync',
-    'version' => '0.1.0',
+    'version' => '0.2.0',
     'bootstrap' => __DIR__ . '/bootstrap.php',
     'helpers' => __DIR__ . '/jmri_ops_helpers.php',
     'pages' => [
         'index' => 'jmri_ops.php',
+        'settings' => 'jmri_ops_settings.php',
     ],
 
     'operations_buttons' => [

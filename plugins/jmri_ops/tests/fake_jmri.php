@@ -17,6 +17,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $state[$name] = $value;
     if ($name === 'IMSTS_CAR_SYNC_REQUEST') {
         $batch = json_decode((string) $value, true);
+        if (($batch['command'] ?? '') === 'names') {
+            $state['IMSTS_CAR_SYNC_REPLY'] = json_encode(['id' => $batch['id'], 'ok' => true,
+                'locations' => ['Bay Yard' => ['Y-1', 'Y-2']], 'loads' => ['E', 'Grain'], 'empty' => 'E']);
+            file_put_contents($state_file, json_encode($state));
+            echo json_encode(['type' => 'memory', 'data' => ['name' => $name, 'value' => $value]]);
+            return true;
+        }
         $cars = array_map(function ($c) {
             return ['car' => $c['car'], 'status' => 'changed', 'changes' => ['x'], 'notes' => []];
         }, $batch['cars']);

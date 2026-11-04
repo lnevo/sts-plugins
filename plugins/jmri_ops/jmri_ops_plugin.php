@@ -10,11 +10,11 @@ function jmri_ops_catalog_definitions()
             'adder_group' => 'during',
             'label' => 'Send Cars to JMRI',
             'gui_template' => 'Send Cars to JMRI{preview_suffix}',
-            'description' => 'Copy every car\'s STS location, load and final destination into JMRI Operations Pro, so the roster, manifests and CATS match STS. Needs sts_car_sync.py in JMRI\'s Start Up and a JMRI url in jmri_ops.json. Cars on a built JMRI train are left alone. A missing or unreachable JMRI is reported and does not stop the session. Preview only asks JMRI what would change.',
+            'description' => 'Copy every car\'s STS location, load and final destination into JMRI Operations Pro, so the roster, manifests and CATS match STS. Needs sts_car_sync.py in JMRI\'s Start Up, and the JMRI url and name map on the plugin\'s Settings page. Cars on a built JMRI train are left alone. A missing or unreachable JMRI is reported and does not stop the session. Preview only asks JMRI what would change.',
             'runnable' => true,
             'dispatch' => 'send_cars_to_jmri',
             'client' => [
-                'hide_inline_params' => ['preview', 'save'],
+                'hide_inline_params' => ['preview'],
                 'derived' => [
                     ['key' => 'preview_suffix', 'from' => 'preview', 'template' => ' (preview)', 'pattern' => '^yes$'],
                 ],
@@ -28,14 +28,6 @@ function jmri_ops_catalog_definitions()
                     'default' => 'no',
                     'visible_label' => true,
                 ],
-                [
-                    'key' => 'save',
-                    'label' => 'Save Operations in JMRI',
-                    'type' => 'select',
-                    'options' => ['yes', 'no'],
-                    'default' => 'yes',
-                    'visible_label' => true,
-                ],
             ],
         ],
     ];
@@ -43,7 +35,7 @@ function jmri_ops_catalog_definitions()
 
 function jmri_ops_normalize_params(array &$params)
 {
-    foreach (['preview' => 'no', 'save' => 'yes'] as $key => $default) {
+    foreach (['preview' => 'no'] as $key => $default) {
         $value = strtolower(trim((string) ($params[$key] ?? '')));
         $params[$key] = in_array($value, ['yes', 'no'], true) ? $value : $default;
     }
@@ -52,7 +44,7 @@ function jmri_ops_normalize_params(array &$params)
 function jmri_ops_dispatch_send($dbc, array $step, array $def, array $params, array $config, array $result)
 {
     jmri_ops_normalize_params($params);
-    $sync = jmri_ops_sync($dbc, $params['preview'] === 'yes', $params['save'] === 'yes');
+    $sync = jmri_ops_sync($dbc, $params['preview'] === 'yes');
     unset($sync['batch'], $sync['jmri']);
     $result = array_merge($result, ['jmri_sync' => $sync]);
     if (empty($sync['ok'])) {

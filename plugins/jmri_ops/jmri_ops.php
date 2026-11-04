@@ -12,7 +12,7 @@ $config = jmri_ops_config();
 $action = $_SERVER['REQUEST_METHOD'] === 'POST' ? (string) ($_POST['action'] ?? '') : '';
 $run = null;
 if ($action === 'preview' || $action === 'send') {
-    $run = jmri_ops_sync($dbc, $action === 'preview', true);
+    $run = jmri_ops_sync($dbc, $action === 'preview');
 }
 
 $listener = null;
@@ -30,7 +30,7 @@ $local_error = '';
 if ($run === null) {
     try {
         [$cars, $locations, $shipments] = jmri_ops_read_rows($dbc);
-        $local = jmri_ops_build_batch(jmri_ops_load_map($config['map']), $cars, $locations, $shipments);
+        $local = jmri_ops_build_batch(jmri_ops_load_map(), $cars, $locations, $shipments);
     } catch (Throwable $e) {
         $local_error = $e->getMessage();
     }
@@ -46,6 +46,7 @@ sts_page_start([
     'icon' => 'bi-arrow-left-right',
     'section' => 'ops',
     'container' => 'narrow',
+    'links' => [['href' => 'plugin.php?id=jmri_ops&page=settings', 'label' => 'Settings', 'icon' => 'bi-gear']],
     'head_extra' => '<style>
       .jo-card { border: none; box-shadow: 0 2px 6px rgba(0,0,0,.1); }
       .jo-card .card-header { font-weight: 600; }
@@ -59,15 +60,15 @@ sts_page_start([
   <div class="card-header"><i class="bi bi-plug"></i> JMRI</div>
   <div class="card-body">
     <?php if ($config['url'] === ''): ?>
-      <div class="alert alert-secondary mb-2">Off: no JMRI url. Put <code>{"url": "http://&lt;jmri-host&gt;:12080"}</code> in <code><?php echo sts_h(jmri_ops_config_path()); ?></code> or set <code>STS_JMRI_URL</code>.</div>
+      <div class="alert alert-secondary mb-2">Off: no JMRI url. Set it in <a href="plugin.php?id=jmri_ops&amp;page=settings">Settings</a>.</div>
     <?php elseif ($listener_error !== ''): ?>
-      <div class="alert alert-warning mb-2"><?php echo sts_h($listener_error); ?>. Is JMRI running with its web server on?</div>
+      <div class="alert alert-warning mb-2"><?php echo sts_h($listener_error); ?>. Is JMRI running with its web server on? Check the address in <a href="plugin.php?id=jmri_ops&amp;page=settings">Settings</a>.</div>
     <?php elseif ($listener === null): ?>
       <div class="alert alert-warning mb-2">JMRI answers at <code><?php echo sts_h($config['url']); ?></code>, but <code>sts_car_sync.py</code> is not running. Add it to JMRI's Start Up and restart JMRI.</div>
     <?php else: ?>
       <div class="alert alert-success mb-2">Ready: <code><?php echo sts_h($config['url']); ?></code>, sts_car_sync.py version <?php echo sts_h($listener); ?>.</div>
     <?php endif; ?>
-    <p class="jo-muted mb-3">STS is the master. Every car's location, load and final destination are copied into JMRI Operations Pro, then JMRI saves Operations. Cars on a built JMRI train are left alone. Name map: <code><?php echo sts_h(basename(jmri_ops_map_path($config['map']))); ?></code>.</p>
+    <p class="jo-muted mb-3">STS is the master. Every car's location, load and final destination are copied into JMRI Operations Pro<?php echo $config['save'] ? ', then JMRI saves Operations' : ''; ?>. Cars on a built JMRI train are left alone. The JMRI address and the STS-to-JMRI names are in <a href="plugin.php?id=jmri_ops&amp;page=settings">Settings</a>.</p>
     <form method="post" class="d-flex flex-wrap gap-2 jo-buttons">
       <button class="btn btn-outline-primary" name="action" value="preview"><i class="bi bi-eye"></i> Preview</button>
       <button class="btn btn-primary" name="action" value="send"><i class="bi bi-send"></i> Send to JMRI</button>
