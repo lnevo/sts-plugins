@@ -9,17 +9,16 @@ Contract: see sts-docker `docs/plans/plugin-hook-contract.md`.
 
 ## Layout values
 
-Only `hart_layout` names HART's jobs, places and shipments. The other plugins
+Only `hart_layout` names HART's jobs, places and shipments. It also carries
+HART-only steps outright, such as Replenish Coke Orders (`hart_coke_orders.php`). The other plugins
 take layout values from settings, each on its own Settings page
 (`plugin.php?id=<plugin>&page=settings`):
 
 - `jmri_ops`: the JMRI address and the STS-to-JMRI name map (`jmri_ops.json`).
 - `track_scale`: `track_scale_config.json` in its data folder.
-- `coke_orders`: the outbound and replenish shipments and the keep prefix
-  (`coke_orders.json`).
 
 A layout plugin can preset them in its manifest, `'presets' => ['track_scale' =>
-[...], 'coke_orders' => [...]]`, and register its own weigh routine for a job
+[...]]`, and register its own weigh routine for a job
 with `'track_scale_job_weigh' => ['JOB' => callable]`. A saved settings file
 wins over the preset, and the preset over the built-in defaults, which name
 nothing. `hart_layout/hart_presets.php` holds HART's.

@@ -35,8 +35,23 @@ return [
 
     'delivery_complete_hooks' => ['hart_delivery_complete'],
 
-    // HART's values for track_scale and coke_orders (hart_presets.php).
+    // HART's values for track_scale (hart_presets.php).
     'presets' => require __DIR__ . '/hart_presets.php',
+
+    // Outbound coke orders (hart_coke_orders.php): the Replenish Coke Orders step, and
+    // keeping COKE- orders through Cancel Orders and Drain Unfilled Orders.
+    'catalog_steps_callback' => 'hart_coke_catalog_definitions',
+    'import_text_guessers' => ['hart_coke_guess_replenish'],
+    'normalize_params' => [
+        'replenish_coke_orders' => 'hart_coke_normalize_replenish_params',
+        'cancel_orders' => 'hart_coke_normalize_cancel_params',
+        'drain_unfilled_orders' => 'hart_coke_normalize_cancel_params',
+    ],
+    'dispatch_handlers' => ['replenish_coke_orders' => 'hart_coke_dispatch_replenish'],
+    'dispatch_log_hooks' => ['replenish_coke_orders' => 'hart_coke_dispatch_log_messages'],
+    'runtime_without_warm_start' => ['replenish_coke_orders'],
+    'catalog_test_sections_callback' => 'hart_coke_catalog_test_sections',
+    'catalog_test_round_trip_skip' => ['replenish_coke_orders'],
 
     // CK1 weighs with HART's own routine (hart_track_scale.php).
     'track_scale_job_weigh' => ['CK1' => 'hart_track_scale_run_ck1_scale_ops'],
