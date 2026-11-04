@@ -1,6 +1,6 @@
 <?php
 /**
- * HART's values for the generic plugins, which name no layout themselves. Each plugin
+ * HART's values for the generic track_scale plugin, which names no layout itself. Each plugin
  * applies its preset under its own config file, so a saved file still wins.
  * Groups merge key by key, so a group here lists only what differs from the plugin's defaults.
  */
@@ -18,10 +18,5 @@ return [
         'calibration' => [
             'test_car_reporting_marks' => 'COST1',
         ],
-    ],
-    'coke_orders' => [
-        'outbound_shipments' => ['COKE-USS', 'COKE-CLEV', 'COKE-USS-BULK', 'COKE-CLEV-BULK'],
-        'replenish_shipments' => ['COKE-USS', 'COKE-CLEV'],
-        'keep_prefix' => 'COKE-',
     ],
 ];

@@ -76,11 +76,7 @@ function hart_station_report_featured()
 
 function hart_outbound_coke_shipment_codes()
 {
-    if (function_exists('coke_orders_outbound_shipment_codes')) {
-        return coke_orders_outbound_shipment_codes();
-    }
-
-    return [];
+    return hart_coke_outbound_shipments();
 }
 
 /** SQL IN (...) fragment for outbound coke shipment codes. */
