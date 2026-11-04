@@ -521,13 +521,18 @@ function carHasFinalUnloadAssignment(car) {
     return car.active_unloading_location.toUpperCase() !== (TRACK_SCALE_UI.scaleLocation || '').toUpperCase();
 }
 
-/** Already on a coke reload order returning to Shenango — assign panel stays closed unless Reassign. */
-function carAssignedToShenCokeReload(car) {
+/**
+ * Already on a reload order going back to be reloaded (config reload_unloading_location_code,
+ * or a shipment in config shipments.reload): the assign panel stays closed unless Reassign.
+ */
+function carAssignedToReload(car) {
     if (!car || !car.has_active_order || carNeedsAssignment(car)) return false;
     const unload = String(car.active_unloading_location || '').toUpperCase();
     const shipment = String(car.active_shipment_code || '').toUpperCase();
-    if (unload === 'SHEN-COKE' || unload.indexOf('SHEN-COKE') >= 0) return true;
-    if (shipment.indexOf('RELOAD') >= 0 && shipment.indexOf('SHEN') >= 0) return true;
+    const reloadUnload = String(CONFIG.reload_unloading_location_code || '').toUpperCase();
+    const reloadShipments = ((CONFIG.shipments && CONFIG.shipments.reload) || []).map((code) => String(code).toUpperCase());
+    if (reloadUnload !== '' && unload.indexOf(reloadUnload) >= 0) return true;
+    if (shipment !== '' && reloadShipments.indexOf(shipment) >= 0) return true;
     return false;
 }
 
@@ -535,9 +540,9 @@ function shouldOfferReassignButton(car, reading) {
     if (!car || !reading || reading.unloaded_weigh || reading.test_car_weigh) return false;
     if (car.allows_scale_reassign !== true) return false;
     if (!car.has_active_order || carNeedsAssignment(car)) return false;
-    // Fail weigh but already routed back to SHEN-COKE — offer manual reassign only.
+    // Fail weigh but already routed back for reload — offer manual reassign only.
     if (!reading.in_tolerance) {
-        return carAssignedToShenCokeReload(car);
+        return carAssignedToReload(car);
     }
     if (shouldShowAssignAfterWeigh(car, reading)) return false;
     return true;
@@ -546,8 +551,8 @@ function shouldOfferReassignButton(car, reading) {
 function shouldShowAssignAfterWeigh(car, reading) {
     if (!car || !reading || reading.unloaded_weigh || reading.test_car_weigh) return false;
     if (!reading.in_tolerance) {
-        // Keep assign panel closed when the car is already going back to SHEN-COKE.
-        if (carAssignedToShenCokeReload(car)) return false;
+        // Keep assign panel closed when the car is already going back for reload.
+        if (carAssignedToReload(car)) return false;
         return carNeedsAssignment(car) || car.allows_scale_reassign === true;
     }
     if (carHasFinalUnloadAssignment(car)) return false;

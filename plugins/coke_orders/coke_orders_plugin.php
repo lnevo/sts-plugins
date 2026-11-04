@@ -19,8 +19,9 @@ function coke_orders_normalize_params(array &$params)
 }
 
 /**
- * Map legacy keep_coke onto keep_prefixes (1 = add COKE-, 0 = remove it).
- * A recipe with no keep_prefixes key at all (legacy) also gets COKE-.
+ * Map legacy keep_coke onto keep_prefixes (1 = add the keep prefix from Settings, 0 = remove it).
+ * A recipe with no keep_prefixes key at all (legacy) also gets the keep prefix.
+ * With no keep prefix set, recipes are left as they are apart from dropping keep_coke.
  */
 function coke_orders_normalize_cancel_params(array &$params)
 {
@@ -37,12 +38,15 @@ function coke_orders_normalize_cancel_params(array &$params)
             $list[] = $item;
         }
     }
+    $prefix = (string) coke_orders_settings()['keep_prefix'];
     $keep = $has_legacy ? trim((string) $params['keep_coke']) : '1';
-    $list = array_values(array_filter($list, function ($item) {
-        return strcasecmp($item, 'COKE-') !== 0;
-    }));
-    if ($keep !== '0') {
-        $list[] = 'COKE-';
+    if ($prefix !== '') {
+        $list = array_values(array_filter($list, function ($item) use ($prefix) {
+            return strcasecmp($item, $prefix) !== 0;
+        }));
+        if ($keep !== '0') {
+            $list[] = $prefix;
+        }
     }
     $params['keep_prefixes'] = implode(',', $list);
     unset($params['keep_coke']);
@@ -98,7 +102,7 @@ function coke_orders_catalog_definitions()
             'adder_group' => 'before',
             'label' => 'Replenish Coke Orders',
             'gui_template' => 'Replenish Coke Orders (target {target_min}–{target_max})',
-            'description' => 'Count unfilled outbound coke orders (USS/CLEV singles and bulk). When below target minimum, generate single-car COKE-USS / COKE-CLEV orders alternating lanes until the minimum is met (capped at target maximum).',
+            'description' => 'Count unfilled orders for the outbound shipments in Coke Orders settings. When below target minimum, generate orders from the replenish shipments, taking them in turn, until the minimum is met (capped at target maximum).',
             'runnable' => true,
             'dispatch' => 'replenish_coke_orders',
             'params' => [

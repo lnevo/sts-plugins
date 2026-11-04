@@ -606,8 +606,8 @@ function hart_run_ck1_session_ops($dbc, $config = [])
     }
 
     $weigh = ['weighed' => 0, 'reloads' => 0, 'outbound_assignments' => 0];
-    if (function_exists('track_scale_run_ck1_scale_ops')) {
-        $weigh = track_scale_run_ck1_scale_ops($dbc);
+    if (function_exists('hart_track_scale_run_ck1_scale_ops')) {
+        $weigh = hart_track_scale_run_ck1_scale_ops($dbc);
     }
     $stats['weighed'] = (int) ($weigh['weighed'] ?? 0);
     $stats['reloads'] = (int) ($weigh['reloads'] ?? 0);
@@ -1238,8 +1238,8 @@ function hart_begin_ck1_test_session($dbc, $fractions, $label, $max_unfilled, $c
     if ($on_train < $min_on_train) {
         $weigh['success'] = false;
         $weigh['errors'][] = "CK1 has {$on_train} outbound coke on train (need >= {$min_on_train})";
-    } elseif ($weigh_required && function_exists('track_scale_run_ck1_scale_ops')) {
-        $weigh = track_scale_run_ck1_scale_ops($dbc);
+    } elseif ($weigh_required && function_exists('hart_track_scale_run_ck1_scale_ops')) {
+        $weigh = hart_track_scale_run_ck1_scale_ops($dbc);
         warm_start_log(
             "Session {$session}{$suffix}: weighed={$weigh['weighed']} outbound={$weigh['outbound_assignments']} "
             . "reloads={$weigh['reloads']}"

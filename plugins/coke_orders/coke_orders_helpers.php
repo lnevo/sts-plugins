@@ -1,26 +1,24 @@
 <?php
 
-/** Outbound coke shipment codes (singles + bulk lanes). */
+/** Outbound shipment codes whose unfilled orders are counted (Settings: outbound shipments). */
 function coke_orders_outbound_shipment_codes()
 {
-    return ['COKE-USS', 'COKE-CLEV', 'COKE-USS-BULK', 'COKE-CLEV-BULK'];
+    return coke_orders_settings()['outbound_shipments'];
 }
 
-/** Single-car outbound coke lanes used by replenish (non-BULK codes). */
+/** Shipment codes the replenish step generates in turn (Settings: replenish shipments). */
 function coke_orders_outbound_single_lane_codes()
 {
-    return array_values(array_filter(
-        coke_orders_outbound_shipment_codes(),
-        static function ($code) {
-            return stripos((string) $code, '-BULK') === false;
-        }
-    ));
+    return coke_orders_settings()['replenish_shipments'];
 }
 
 /** Count unfilled car orders for outbound coke shipments. */
 function coke_orders_count_unfilled_outbound($dbc)
 {
     $codes = coke_orders_outbound_shipment_codes();
+    if ($codes === []) {
+        return 0;
+    }
     $code_list = [];
     foreach ($codes as $code) {
         $code_list[] = '"' . mysqli_real_escape_string($dbc, $code) . '"';
@@ -51,6 +49,18 @@ function coke_orders_replenish($dbc, $target_min = 6, $target_max = 8)
     $target_min = max(1, (int) $target_min);
     $target_max = max($target_min, (int) $target_max);
     $before = coke_orders_count_unfilled_outbound($dbc);
+
+    if (coke_orders_outbound_shipment_codes() === []) {
+        return [
+            'generated' => 0,
+            'before' => $before,
+            'after' => $before,
+            'target_min' => $target_min,
+            'target_max' => $target_max,
+            'skipped' => true,
+            'reason' => 'No outbound shipments set in Coke Orders settings',
+        ];
+    }
 
     if ($before >= $target_min) {
         return [

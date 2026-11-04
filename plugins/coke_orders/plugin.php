@@ -1,6 +1,7 @@
 <?php
 /**
- * Coke Orders addon — outbound coke order replenishment for HART-style layouts.
+ * Coke Orders addon — keep a pool of open outbound orders topped up. Which shipments
+ * count and which are generated are settings (page 'settings'); a layout plugin can preset them.
  */
 return [
     'id' => 'coke_orders',
@@ -8,6 +9,9 @@ return [
     'version' => '1.0.0',
     'bootstrap' => __DIR__ . '/bootstrap.php',
     'helpers' => __DIR__ . '/coke_orders_helpers.php',
+    'pages' => [
+        'settings' => 'coke_orders_settings_page.php',
+    ],
 
     'catalog_steps_callback' => 'coke_orders_catalog_definitions',
 
@@ -17,12 +21,6 @@ return [
 
     'import_text_guessers' => [
         'coke_orders_plugin_guess_replenish',
-    ],
-
-    'param_overrides' => [
-        'cancel_orders' => ['keep_prefixes' => ['default' => 'COKE-', 'placeholder' => 'e.g. COKE-']],
-        'drain_unfilled_orders' => ['keep_prefixes' => ['default' => 'COKE-', 'placeholder' => 'e.g. COKE-']],
-        'generate_orders' => ['exclude_prefixes' => ['placeholder' => 'e.g. COKE-,BULK-']],
     ],
 
     'normalize_params' => [

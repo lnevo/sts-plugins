@@ -31,22 +31,32 @@ function track_scale_config_path()
     return track_scale_data_dir() . '/track_scale_config.json';
 }
 
+/**
+ * Built-in defaults. Nothing here names a layout: the scale location, the
+ * commodity and the shipments are blank until a layout plugin's preset (see
+ * track_scale_preset()) or track_scale_config.json sets them.
+ */
 function track_scale_default_config()
 {
     return [
         'units' => 'tons',
         'precision' => 2,
         'routing_tolerance_tons' => 5.0,
-        'loading_location_code' => 'SOUTH-SCALE',
+        // STS location code of the scale track.
+        'loading_location_code' => '',
         'site_label' => '',
         'routed_trains_label' => 'Trains',
-        'outbound_loading_location_code' => 'NORTH',
-        'reload_loading_location_code' => 'SOUTH-SCALE',
+        // Where an outbound (in-tolerance) car is loaded from, and where a reload starts.
+        'outbound_loading_location_code' => '',
+        'reload_loading_location_code' => '',
+        // Where a reload order sends the car back to; the scale page treats a car bound there as already routed.
+        'reload_unloading_location_code' => '',
         'api_base_url' => '/sts/api/index.php',
-        'commodity_code' => 'COKE',
+        // STS commodity code of the cars the scale weighs.
+        'commodity_code' => '',
         'shipments' => [
-            'outbound' => ['COKE-USS', 'COKE-CLEV', 'COKE-USS-BULK', 'COKE-CLEV-BULK'],
-            'reload' => ['COKE-RELOAD-SHEN'],
+            'outbound' => [],
+            'reload' => [],
         ],
         'default_profiles' => [
             '50ft_hopper' => [
@@ -104,7 +114,7 @@ function track_scale_default_config()
                 'center' => ['left' => 0.72, 'center' => 1.00, 'right' => 0.72],
                 'right' => ['left' => 0.18, 'center' => 0.52, 'right' => 1.00],
             ],
-            'test_car_reporting_marks' => 'COST1',
+            'test_car_reporting_marks' => '',
             'test_car_tare_tons' => 40.0,
         ],
         'calibration_drift' => [
@@ -1235,6 +1245,33 @@ function track_scale_append_session_log_row(array $row, $config = null)
     return true;
 }
 
+/**
+ * A layout plugin can supply this plugin's layout values in its manifest:
+ * 'presets' => ['track_scale' => [...]]. The first plugin (by id) that does wins.
+ *
+ * @return array{0: string|null, 1: array} plugin id and the preset
+ */
+function track_scale_preset()
+{
+    if (!function_exists('plugins_discover')) {
+        return [null, []];
+    }
+    foreach (plugins_discover() as $manifest) {
+        $preset = $manifest['presets']['track_scale'] ?? null;
+        if (is_array($preset)) {
+            return [(string) ($manifest['id'] ?? ''), $preset];
+        }
+    }
+
+    return [null, []];
+}
+
+/** Built-in defaults with the layout preset on top: what applies before track_scale_config.json. */
+function track_scale_layered_defaults()
+{
+    return array_merge(track_scale_default_config(), track_scale_preset()[1]);
+}
+
 function &track_scale_config_ref()
 {
     static $config = null;
@@ -1261,7 +1298,7 @@ function track_scale_load_config()
         return $config;
     }
 
-    $defaults = track_scale_default_config();
+    $defaults = track_scale_layered_defaults();
     $path = track_scale_config_path();
     if (!is_readable($path)) {
         $config = $defaults;
@@ -2588,7 +2625,7 @@ function track_scale_routed_trains_label($config = null)
 function track_scale_loading_location_code($config = null)
 {
     $config = $config ?? track_scale_load_config();
-    return (string) ($config['loading_location_code'] ?? 'SOUTH-SCALE');
+    return (string) ($config['loading_location_code'] ?? '');
 }
 
 function track_scale_south_yard_routing_id($dbc, $config = null)
@@ -2650,7 +2687,7 @@ function track_scale_job_ids_for_scale_trains($dbc, $config = null)
     }
 
     // Any job that currently has cars in train — no south-yard / scale-area
-    // station filter. Locals like D749 can weigh cars already on the train.
+    // station filter. A local can weigh cars already on its train.
     $sql = 'SELECT DISTINCT cars.handled_by_job_id AS job_id
             FROM cars
             WHERE cars.current_location_id = 0
@@ -3135,7 +3172,7 @@ function track_scale_car_in_coke_fleet($dbc, $car_id, $config = null)
     }
     $config = $config ?? track_scale_load_config();
     $car_id = mysqli_real_escape_string($dbc, (string) $car_id);
-    $commodity_code = mysqli_real_escape_string($dbc, $config['commodity_code'] ?? 'COKE');
+    $commodity_code = mysqli_real_escape_string($dbc, $config['commodity_code'] ?? '');
 
     $sql = 'SELECT COUNT(*) AS cnt
             FROM pool
@@ -3259,20 +3296,20 @@ function track_scale_shipment_codes_for_routing($routing, $config = null)
     $config = $config ?? track_scale_load_config();
     $shipments = $config['shipments'] ?? [];
     if ($routing === 'reload') {
-        return $shipments['reload'] ?? ['COKE-RELOAD-SHEN'];
+        return $shipments['reload'] ?? [];
     }
-    return $shipments['outbound'] ?? ['COKE-USS', 'COKE-CLEV', 'COKE-USS-BULK', 'COKE-CLEV-BULK'];
+    return $shipments['outbound'] ?? [];
 }
 
 function track_scale_loading_location_for_routing($routing, $config = null)
 {
     $config = $config ?? track_scale_load_config();
     if ($routing === 'reload') {
-        return $config['reload_loading_location_code']
-            ?? $config['loading_location_code']
-            ?? 'SOUTH-SCALE';
+        $code = (string) ($config['reload_loading_location_code'] ?? '');
+
+        return $code !== '' ? $code : (string) ($config['loading_location_code'] ?? '');
     }
-    return $config['outbound_loading_location_code'] ?? 'NORTH';
+    return (string) ($config['outbound_loading_location_code'] ?? '');
 }
 
 function track_scale_orders_to_create($min_amount, $max_amount)
@@ -3297,7 +3334,7 @@ function track_scale_get_open_orders($dbc, $car_id, $routing, $config = null)
         $dbc,
         track_scale_loading_location_for_routing($routing, $config)
     );
-    $commodity_code = mysqli_real_escape_string($dbc, $config['commodity_code'] ?? 'COKE');
+    $commodity_code = mysqli_real_escape_string($dbc, $config['commodity_code'] ?? '');
     $shipment_codes = track_scale_shipment_codes_for_routing($routing, $config);
 
     if (count($shipment_codes) === 0) {
