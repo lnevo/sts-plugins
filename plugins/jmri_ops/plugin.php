@@ -18,7 +18,7 @@ return [
 
     'operations_buttons' => [
         [
-            'cid' => 'during',
+            'cid' => 'after',
             'after' => 'zz_jmri_ops',
             'page' => 'index',
             'icon' => 'bi-arrow-left-right',
