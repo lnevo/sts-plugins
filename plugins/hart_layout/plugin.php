@@ -9,6 +9,8 @@ return [
     'version' => '1.0.0',
     'bootstrap' => __DIR__ . '/bootstrap.php',
     'helpers' => __DIR__ . '/hart_warm_start.php',
+    // Session dump names: hart_session_pre{N}, hart_session_post{N}, legacy hart_session{N}.
+    'session_backup_prefix' => 'hart_session',
 
     'warm_start_scenario' => [
         'id' => 'hart',
@@ -79,5 +81,6 @@ return [
         'composite_d749_phased' => 'text_instruction',
         'secure_d749_demmler' => 'text_instruction',
         'secure_nvl_scully' => 'text_instruction',
+        'weigh_ck1' => 'track_scale',
     ],
 ];
