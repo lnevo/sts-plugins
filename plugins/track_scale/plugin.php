@@ -45,10 +45,6 @@ return [
         'during' => ['track_scale', 'calibrate_track_scale'],
     ],
 
-    'legacy_function_ids' => [
-        'weigh_ck1' => 'track_scale',
-    ],
-
     'import_text_guessers' => [
         'track_scale_plugin_guess_calibrate',
         'track_scale_plugin_guess_weigh_cars',
