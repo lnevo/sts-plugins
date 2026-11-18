@@ -52,7 +52,36 @@ function hart_default_config()
 
 function hart_track_scale_available()
 {
+    if (!function_exists('plugins_require_helper')) {
+        throw new RuntimeException('hart_layout needs STS core (plugin_registry.php) loaded before its warm-start code runs');
+    }
     return plugins_require_helper('track_scale');
+}
+
+/** Config keys of removed modes; a caller still passing one gets an error, not a different run. */
+function hart_retired_config_keys()
+{
+    return ['run_ck1_test', 'ck1_test', 'stop_when_locals_secured'];
+}
+
+/**
+ * Refuse a config hart_run cannot honour, before anything is written.
+ * secure_locals_each_session must say how the session ends (play it, or stop when STG-SCULLY is ready).
+ */
+function hart_check_config(array $config)
+{
+    foreach (hart_retired_config_keys() as $key) {
+        if (!empty($config[$key])) {
+            throw new InvalidArgumentException("warm-start config key '{$key}' was removed; drop it from the config");
+        }
+    }
+    if (!empty($config['secure_locals_each_session'])
+        && empty($config['play_operating_session'])
+        && empty($config['stop_when_stg_scully_ready'])) {
+        throw new InvalidArgumentException(
+            'secure_locals_each_session needs play_operating_session or stop_when_stg_scully_ready in the config'
+        );
+    }
 }
 
 /** Station names pinned to the top of per-session station reports (HART layout). */
@@ -590,6 +619,7 @@ function hart_play_operating_session($dbc, array $config = [], ?array $fractions
  */
 function hart_advance_session($dbc, $fractions, $label, $max_unfilled, $finish_non_staging_only = false, $config = [], $run_staging = true)
 {
+    hart_check_config($config);
     $session = warm_start_get_session($dbc) + 1;
     warm_start_set_session($dbc, $session);
     $load_unload_fraction = $fractions['load_unload'] ?? 1.0;
@@ -737,9 +767,8 @@ function hart_run_session_work(
                 $secured['stg_scully'] = array_merge($stg_scully, ['deferred' => false]);
             }
         } else {
-            throw new RuntimeException(
-                'secure_locals_each_session needs play_operating_session or stop_when_stg_scully_ready in the config'
-            );
+            // hart_check_config refuses this config before the session starts.
+            throw new LogicException('secure_locals_each_session reached session end with no stop mode');
         }
 
         $stats['load_unload'] = ($stats['load_unload'] ?? 0)
@@ -948,6 +977,7 @@ function hart_pick_coke_waybill($dbc, $car_id, $routing, $config)
 
 function hart_run($dbc, $config)
 {
+    hart_check_config($config);
     $reseed = $config['reseed'] ?? !($config['continue_from_current'] ?? false);
     if ($reseed) {
         mt_srand((int) $config['seed']);
