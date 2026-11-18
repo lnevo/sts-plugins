@@ -40,32 +40,19 @@ function hart_coke_stats_init()
 function hart_default_config()
 {
     return [
-        'stop_when_locals_secured' => false,
         'stop_when_stg_scully_ready' => false,
-        'run_ck1_test' => false,
         'run_ck1_each_session' => false,
         'secure_locals_each_session' => false,
         'run_phased_locals' => false,
         'staging_after_locals' => false,
         'staging_jobs' => ['STG-SCULLY', 'STG-DEMMLER'],
         'scale_calibrate_every_sessions' => 3,
-        'ck1_test' => [
-            'weigh_required' => true,
-            'min_outbound_on_train' => 1,
-        ],
     ];
 }
 
 function hart_track_scale_available()
 {
-    if (!function_exists('plugins_require_helper')) {
-        $plugins = __DIR__ . '/plugin_registry.php';
-        if (is_readable($plugins)) {
-            require_once $plugins;
-        }
-    }
-
-    return function_exists('plugins_require_helper') && plugins_require_helper('track_scale');
+    return plugins_require_helper('track_scale');
 }
 
 /** Station names pinned to the top of per-session station reports (HART layout). */
@@ -93,67 +80,6 @@ function hart_outbound_coke_shipment_codes_sql_in($dbc)
 function hart_is_outbound_coke_shipment($shipment_code)
 {
     return in_array((string) $shipment_code, hart_outbound_coke_shipment_codes(), true);
-}
-
-function hart_count_shenango_pickup_for_ck1($dbc)
-{
-    $shenango_station = 12;
-    $seen = [];
-    foreach (['NVL', 'D749'] as $job_name) {
-        foreach (warm_start_pending_pickup_ids($dbc, $job_name) as $car_id) {
-            if (warm_start_car_order_targets_station($dbc, $car_id, $shenango_station)) {
-                $seen[(int) $car_id] = true;
-            }
-        }
-    }
-    return count($seen);
-}
-
-function hart_count_loaded_coke_at_shenango($dbc)
-{
-    if (!hart_track_scale_available()) {
-        return 0;
-    }
-    $config = track_scale_load_config();
-
-    $rs = mysqli_query(
-        $dbc,
-        'SELECT cars.id AS car_id
-         FROM cars
-         INNER JOIN locations loc ON loc.id = cars.current_location_id
-         WHERE loc.station = 12
-           AND cars.current_location_id > 0
-           AND cars.handled_by_job_id = 0
-           AND cars.status = "Loaded"
-         ORDER BY cars.id'
-    );
-    $count = 0;
-    while ($row = mysqli_fetch_array($rs)) {
-        if (track_scale_car_in_coke_fleet($dbc, (int) $row['car_id'], $config)) {
-            $count++;
-        }
-    }
-    return $count;
-}
-
-function hart_count_ck1_on_train($dbc)
-{
-    $ck1_id = warm_start_job_id($dbc, 'CK1');
-    if ($ck1_id <= 0) {
-        return 0;
-    }
-    $rs = mysqli_query(
-        $dbc,
-        'SELECT COUNT(*) AS c
-         FROM cars
-         INNER JOIN car_orders ON car_orders.car = cars.id
-         INNER JOIN shipments ON shipments.id = car_orders.shipment
-         WHERE cars.handled_by_job_id = "' . (int) $ck1_id . '"
-           AND cars.current_location_id = 0
-           AND cars.status = "Loaded"
-           AND shipments.code IN (' . hart_outbound_coke_shipment_codes_sql_in($dbc) . ')'
-    );
-    return (int) mysqli_fetch_array($rs)['c'];
 }
 
 function hart_phased_local_job_names()
@@ -310,30 +236,6 @@ function hart_secure_locals_at_session_end($dbc, $config = [], $load_unload_frac
         'stg_demmler' => $stg_demmler,
         'stg_scully' => $stg_scully,
     ];
-}
-
-function hart_locals_secured($dbc, $config = [], $session_snapshot = null)
-{
-    unset($session_snapshot);
-    if (warm_start_non_staging_work_remaining($dbc, $config) > 0) {
-        return false;
-    }
-
-    foreach (['NVL'] as $job_name) {
-        $job_id = warm_start_job_id($dbc, $job_name);
-        if ($job_id <= 0) {
-            continue;
-        }
-        $rs = mysqli_query(
-            $dbc,
-            'SELECT COUNT(*) AS c FROM cars WHERE handled_by_job_id = "' . (int) $job_id . '" AND current_location_id = 0'
-        );
-        if ((int) mysqli_fetch_array($rs)['c'] > 0) {
-            return false;
-        }
-    }
-
-    return true;
 }
 
 function hart_ck1_reload_shipment_codes($dbc)
@@ -645,7 +547,6 @@ function hart_tracked_sim_overrides(array $overrides = [])
 {
     return array_merge([
         'stop_when_stg_scully_ready' => true,
-        'stop_when_locals_secured' => false,
         'stop_when_staging_ready' => false,
         'run_ck1_each_session' => true,
         'secure_locals_each_session' => true,
@@ -836,7 +737,9 @@ function hart_run_session_work(
                 $secured['stg_scully'] = array_merge($stg_scully, ['deferred' => false]);
             }
         } else {
-            $secured = hart_secure_locals_at_session_end($dbc, $config, $load_unload_fraction, true);
+            throw new RuntimeException(
+                'secure_locals_each_session needs play_operating_session or stop_when_stg_scully_ready in the config'
+            );
         }
 
         $stats['load_unload'] = ($stats['load_unload'] ?? 0)
@@ -885,77 +788,10 @@ function hart_run_session_work(
     return array_merge($stats, [
         'staging' => $staging,
         'session_stats' => $snapshot,
-        'locals_secured' => hart_locals_secured($dbc, $config, $snapshot),
         'stg_scully_stop_ready' => !empty($stats['stg_scully_stop_ready']),
         'stg_scully_backlog' => $stats['stg_scully_backlog'] ?? ['eligible' => 0, 'on_jobs' => 0, 'ready' => false],
         'pending_stg_scully' => $pending_stg_scully,
     ]);
-}
-
-function hart_ck1_outbound_cars_detail($dbc)
-{
-    $ck1_id = warm_start_job_id($dbc, 'CK1');
-    if ($ck1_id <= 0) {
-        return [];
-    }
-
-    $codes = hart_outbound_coke_shipment_codes();
-    $quoted = implode(', ', array_map(function ($code) {
-        return '"' . addslashes($code) . '"';
-    }, $codes));
-
-    $rs = mysqli_query(
-        $dbc,
-        'SELECT cars.id AS car_id,
-                cars.reporting_marks,
-                cars.status,
-                cars.current_location_id,
-                shipments.code AS shipment_code,
-                car_orders.waybill_number
-         FROM cars
-         INNER JOIN car_orders ON car_orders.car = cars.id
-         INNER JOIN shipments ON shipments.id = car_orders.shipment
-         WHERE cars.handled_by_job_id = "' . (int) $ck1_id . '"
-           AND shipments.code IN (' . $quoted . ')
-         ORDER BY cars.id'
-    );
-
-    $cars = [];
-    while ($row = mysqli_fetch_array($rs)) {
-        $on_train = ((int) $row['current_location_id'] === 0);
-        $cars[] = [
-            'car_id' => (int) $row['car_id'],
-            'reporting_marks' => $row['reporting_marks'],
-            'status' => $row['status'],
-            'on_train' => $on_train,
-            'shipment_code' => $row['shipment_code'],
-            'waybill_number' => $row['waybill_number'],
-        ];
-    }
-    return $cars;
-}
-
-function hart_log_ck1_outbound_cars($dbc, $session)
-{
-    $cars = hart_ck1_outbound_cars_detail($dbc);
-    if (count($cars) === 0) {
-        warm_start_log("Session {$session}: no CK1 outbound coke cars assigned");
-        return;
-    }
-
-    warm_start_log("Session {$session}: CK1 outbound coke cars");
-    foreach ($cars as $car) {
-        $where = $car['on_train'] ? 'on train' : 'spotted';
-        warm_start_log(sprintf(
-            '  %s id=%d %s %s wb=%s (%s)',
-            $car['reporting_marks'],
-            $car['car_id'],
-            $car['status'],
-            $car['shipment_code'],
-            $car['waybill_number'],
-            $where
-        ));
-    }
 }
 
 function hart_staging_job_names($dbc, $config)
@@ -1065,94 +901,6 @@ function hart_prep_staging_yards($dbc, $config)
     return $moved;
 }
 
-function hart_seed_island_spotting($dbc, $target_count)
-{
-    if ($target_count <= 0) {
-        return 0;
-    }
-
-    $rs = mysqli_query(
-        $dbc,
-        'SELECT COUNT(*) AS c
-         FROM cars
-         LEFT JOIN locations loc ON loc.id = cars.current_location_id
-         WHERE loc.station = 3
-           AND cars.current_location_id > 0'
-    );
-    $have = (int) mysqli_fetch_array($rs)['c'];
-    if ($have >= $target_count) {
-        return 0;
-    }
-
-    $need = $target_count - $have;
-    $sql = 'SELECT cars.id AS car_id,
-                   cars.status,
-                   shipments.loading_location,
-                   shipments.unloading_location,
-                   load_loc.station AS load_station,
-                   unload_loc.station AS unload_station
-            FROM cars
-            INNER JOIN car_orders ON car_orders.car = cars.id
-            INNER JOIN shipments ON shipments.id = car_orders.shipment
-            LEFT JOIN locations load_loc ON load_loc.id = shipments.loading_location
-            LEFT JOIN locations unload_loc ON unload_loc.id = shipments.unloading_location
-            LEFT JOIN locations cur_loc ON cur_loc.id = cars.current_location_id
-            WHERE (load_loc.station IN (3, 12) OR unload_loc.station IN (3, 12))
-              AND (cur_loc.station IS NULL OR cur_loc.station NOT IN (3, 12))
-              AND cars.current_location_id > 0
-              AND car_orders.waybill_number NOT LIKE "%E%"
-            ORDER BY
-              CASE cars.status
-                WHEN "Unloading" THEN 0
-                WHEN "Loaded" THEN 1
-                WHEN "Loading" THEN 2
-                WHEN "Ordered" THEN 3
-                ELSE 4
-              END,
-              cars.id';
-
-    $rs = mysqli_query($dbc, $sql);
-    $candidates = [];
-    while ($row = mysqli_fetch_array($rs)) {
-        $candidates[] = $row;
-    }
-    shuffle($candidates);
-
-    $placed = 0;
-    for ($i = 0; $i < min($need, count($candidates)); $i++) {
-        $row = $candidates[$i];
-        $car_id = (int) $row['car_id'];
-        $unload_station = (int) $row['unload_station'];
-        $load_station = (int) $row['load_station'];
-
-        if (in_array($row['status'], ['Loaded', 'Unloading'], true) && in_array($unload_station, [3, 12], true)) {
-            $spot_id = (int) $row['unloading_location'];
-            $new_status = 'Unloading';
-        } elseif (in_array($load_station, [3, 12], true)) {
-            $spot_id = (int) $row['loading_location'];
-            $new_status = $row['status'] === 'Ordered' ? 'Ordered' : $row['status'];
-        } else {
-            continue;
-        }
-        if ($spot_id <= 0) {
-            continue;
-        }
-        if (mysqli_query(
-            $dbc,
-            'UPDATE cars
-             SET current_location_id = "' . $spot_id . '",
-                 handled_by_job_id = 0,
-                 position = 0,
-                 status = "' . mysqli_real_escape_string($dbc, $new_status) . '"
-             WHERE id = "' . $car_id . '"'
-        )) {
-            $placed++;
-        }
-    }
-
-    return $placed;
-}
-
 function hart_run_d749_session_start($dbc)
 {
     $south_id = warm_start_location_id_by_code($dbc, 'SOUTH');
@@ -1160,162 +908,6 @@ function hart_run_d749_session_start($dbc)
     $picked_up = warm_start_pickup_job($dbc, 'D749');
     $set_out = warm_start_setout_job_at_location($dbc, 'D749', $south_id);
     return compact('assigned', 'picked_up', 'set_out');
-}
-
-function hart_assign_nvl_scully_block($dbc)
-{
-    return warm_start_assign_all_ordered_cars_at_station($dbc, 'NVL', 9);
-}
-
-/**
- * Final session: CK1 picks up loaded outbound coke, calibrates if needed, weighs — ready for manual follow-up.
- */
-function hart_begin_ck1_test_session($dbc, $fractions, $label, $max_unfilled, $config)
-{
-    $coke_before = warm_start_stats_copy_all();
-    warm_start_session_stats_reset();
-    $unfilled = warm_start_count_unfilled($dbc);
-    $session = warm_start_get_session($dbc) + 1;
-    warm_start_set_session($dbc, $session);
-    $suffix = $label !== '' ? " ({$label})" : '';
-
-    if ($unfilled > $max_unfilled) {
-        warm_start_log(
-            "Session {$session}{$suffix}: skipping generate ({$unfilled} unfilled > {$max_unfilled})"
-        );
-    } else {
-        $waybill_counter = warm_start_get_next_auto_waybill_counter($dbc, $session);
-        $generated = warm_start_generate_orders($dbc, $session, $waybill_counter);
-        warm_start_log("Session {$session}{$suffix}: generated {$generated} orders");
-    }
-
-    $reposition_fraction = (float) ($fractions['reposition'] ?? $config['reposition_fraction'] ?? 0.65);
-    $filled = warm_start_auto_fill($dbc, $fractions['fill_orders']);
-    $repositioned = warm_start_create_reposition_orders($dbc, $reposition_fraction);
-    $load_unload = warm_start_load_unload($dbc, $fractions['load_unload']);
-    $load_unload += warm_start_load_unload($dbc, $fractions['load_unload']);
-
-    $ck1_assigned = warm_start_auto_assign_job_at_station($dbc, 'CK1', 12, 1.0);
-    $ck1_picked = warm_start_pickup_job($dbc, 'CK1');
-    $calibration = ['calibrated' => false, 'skipped' => true];
-    if (function_exists('track_scale_maybe_calibrate_scale')) {
-        $calibration = track_scale_maybe_calibrate_scale($dbc, $config);
-    }
-
-    $ck1_id = warm_start_job_id($dbc, 'CK1');
-    $rs = mysqli_query(
-        $dbc,
-        'SELECT COUNT(*) AS c
-         FROM cars
-         INNER JOIN car_orders ON car_orders.car = cars.id
-         INNER JOIN shipments ON shipments.id = car_orders.shipment
-         WHERE cars.handled_by_job_id = "' . (int) $ck1_id . '"
-           AND cars.current_location_id = 0
-           AND cars.status = "Loaded"
-           AND shipments.code IN (' . hart_outbound_coke_shipment_codes_sql_in($dbc) . ')'
-    );
-    $on_train = (int) mysqli_fetch_array($rs)['c'];
-
-    warm_start_log(
-        "Session {$session}{$suffix}: filled={$filled} repo={$repositioned} load/unload={$load_unload}; "
-        . "CK1 outbound assigned={$ck1_assigned} picked up={$ck1_picked} on train={$on_train}"
-    );
-    if (!empty($calibration['calibrated'])) {
-        warm_start_log("Session {$session}{$suffix}: track scale calibrated");
-    }
-
-    hart_log_ck1_outbound_cars($dbc, $session);
-
-    $ck1_test = $config['ck1_test'] ?? [];
-    $min_on_train = (int) ($ck1_test['min_outbound_on_train'] ?? 1);
-    $weigh_required = (bool) ($ck1_test['weigh_required'] ?? true);
-    $weigh = ['success' => true, 'weighed' => 0, 'reloads' => 0, 'outbound_assignments' => 0, 'errors' => []];
-
-    if ($on_train < $min_on_train) {
-        $weigh['success'] = false;
-        $weigh['errors'][] = "CK1 has {$on_train} outbound coke on train (need >= {$min_on_train})";
-    } elseif ($weigh_required && function_exists('hart_track_scale_run_ck1_scale_ops')) {
-        $weigh = hart_track_scale_run_ck1_scale_ops($dbc);
-        warm_start_log(
-            "Session {$session}{$suffix}: weighed={$weigh['weighed']} outbound={$weigh['outbound_assignments']} "
-            . "reloads={$weigh['reloads']}"
-        );
-        if (!empty($weigh['errors'])) {
-            foreach ($weigh['errors'] as $error) {
-                warm_start_log("Session {$session}{$suffix}: WEIGH ERROR — {$error}");
-            }
-        }
-    }
-
-    warm_start_session_stats_commit($session, $label, $coke_before);
-    hart_log_ck1_outbound_cars($dbc, $session);
-
-    return [
-        'filled' => $filled,
-        'repositioned' => $repositioned,
-        'load_unload' => $load_unload,
-        'ck1_assigned' => $ck1_assigned,
-        'ck1_picked_up' => $ck1_picked,
-        'ck1_on_train' => $on_train,
-        'scale_calibrated' => !empty($calibration['calibrated']),
-        'weigh' => $weigh,
-        'weigh_failed' => empty($weigh['success']),
-    ];
-}
-
-/**
- * Assign and pick up CK1 coke cars at Shenango so they are on the train for weighing.
- */
-function hart_ck1_ensure_coke_on_train($dbc, $fraction = 1.0)
-{
-    if (!hart_track_scale_available()) {
-        $assigned = warm_start_auto_assign_job_at_station($dbc, 'CK1', 12, $fraction);
-        $picked = warm_start_pickup_job($dbc, 'CK1');
-        return ['assigned' => $assigned, 'picked_up' => $picked];
-    }
-
-    $config = track_scale_load_config();
-    $job_id = warm_start_job_id($dbc, 'CK1');
-    if ($job_id <= 0) {
-        return ['assigned' => 0, 'picked_up' => 0];
-    }
-
-    $rs = mysqli_query(
-        $dbc,
-        'SELECT cars.id AS car_id
-         FROM cars
-         INNER JOIN locations loc ON loc.id = cars.current_location_id
-         WHERE loc.station = 12
-           AND cars.current_location_id > 0
-           AND cars.handled_by_job_id = 0
-           AND cars.status IN ("Loaded", "Loading")
-         ORDER BY cars.id'
-    );
-    $candidates = [];
-    while ($row = mysqli_fetch_array($rs)) {
-        $car_id = (int) $row['car_id'];
-        if (track_scale_car_in_coke_fleet($dbc, $car_id, $config)) {
-            $candidates[] = $car_id;
-        }
-    }
-    shuffle($candidates);
-    $limit = (int) ceil(count($candidates) * max(0.0, min(1.0, $fraction)));
-
-    $assigned = 0;
-    for ($i = 0; $i < $limit; $i++) {
-        $car_id = $candidates[$i];
-        if (mysqli_query(
-            $dbc,
-            'UPDATE cars SET handled_by_job_id = "' . (int) $job_id . '" WHERE id = "' . $car_id . '"'
-        )) {
-            $assigned++;
-        }
-    }
-
-    $assigned += warm_start_auto_assign_job_at_station($dbc, 'CK1', 12, $fraction);
-    $picked = warm_start_pickup_job($dbc, 'CK1');
-
-    return ['assigned' => $assigned, 'picked_up' => $picked];
 }
 
 function hart_car_has_routing_order($dbc, $car_id, $routing, $config)
@@ -1373,12 +965,8 @@ function hart_run($dbc, $config)
     $min_sessions = (int) ($config['min_sessions'] ?? $config['completed_sessions'] ?? 3);
     $max_sessions = (int) ($config['max_sessions'] ?? 12);
     $stop_at_stg_scully = (bool) ($config['stop_when_stg_scully_ready'] ?? false);
-    $stop_at_locals = !$stop_at_stg_scully && (bool) ($config['stop_when_locals_secured'] ?? false);
-    $stop_at_staging = !$stop_at_locals && !$stop_at_stg_scully && (bool) ($config['stop_when_staging_ready'] ?? true);
-    $run_ck1_test = (bool) ($config['run_ck1_test'] ?? false);
-    $weigh_failed = false;
+    $stop_at_staging = !$stop_at_stg_scully && (bool) ($config['stop_when_staging_ready'] ?? true);
     $stopped_at_staging = false;
-    $stopped_at_locals = false;
     $stopped_at_stg_scully = false;
     $staging_backlog = ['eligible' => 0, 'on_jobs' => 0, 'ready' => false];
 
@@ -1424,30 +1012,6 @@ function hart_run($dbc, $config)
         if (!$stopped_at_stg_scully) {
             warm_start_log('STOP: max_sessions (' . $max_sessions . ') reached without STG-SCULLY-ready state.');
             $staging_backlog = warm_start_staging_backlog_for_job($dbc, 'STG-SCULLY', $config);
-        }
-    } elseif ($stop_at_locals) {
-        warm_start_log(
-            'Warm start simulation (seed=' . $config['seed']
-            . ', max_sessions=' . $max_sessions
-            . ', stop=NVL@Scully + D749 on train (Demmler block)'
-            . ', CK1 each session'
-            . ', skip_generate_if_unfilled>' . $max_unfilled
-            . ', reposition_fraction=' . $repo_fraction . ')'
-        );
-
-        for ($i = 0; $i < $max_sessions; $i++) {
-            $result = warm_start_advance_session($dbc, $full, '', $max_unfilled, false, $config, false);
-            $session = warm_start_get_session($dbc);
-            if (!empty($result['locals_secured'])) {
-                $stopped_at_locals = true;
-                warm_start_log("Session {$session}: locals secured (NVL@Scully, D749 on train with Demmler load).");
-            }
-        }
-
-        if ($stopped_at_locals) {
-            warm_start_log('Completed ' . $max_sessions . ' session(s); locals secured during run.');
-        } else {
-            warm_start_log('Completed ' . $max_sessions . ' session(s); locals not secured at end.');
         }
     } elseif ($stop_at_staging) {
         if ($continue) {
@@ -1507,30 +1071,17 @@ function hart_run($dbc, $config)
         for ($i = 0; $i < $completed; $i++) {
             warm_start_advance_session($dbc, $full, '', $max_unfilled, false, $config, true);
         }
-        if ($run_ck1_test) {
-            $ck1_result = hart_begin_ck1_test_session($dbc, $config['partial'], 'CK1 test', $max_unfilled, $config);
-            $weigh_failed = !empty($ck1_result['weigh_failed']);
-        }
     }
 
     warm_start_print_session_stats_report();
 
-    if ($weigh_failed) {
-        warm_start_log('');
-        warm_start_log('STOP: CK1 weigh failed at session ' . warm_start_get_session($dbc) . ' — troubleshoot before continuing.');
-    } elseif ($stopped_at_stg_scully) {
+    if ($stopped_at_stg_scully) {
         warm_start_log('');
         warm_start_log(
             'Ready for STG-SCULLY — session ' . warm_start_get_session($dbc)
             . ' with ' . ($staging_backlog['eligible'] ?? 0)
             . ' car(s) at Scully awaiting assignment'
             . ' (NVL secured, D749 on train with Demmler block).'
-        );
-    } elseif ($stopped_at_locals) {
-        warm_start_log('');
-        warm_start_log(
-            'Locals secured — session ' . warm_start_get_session($dbc)
-            . ' (NVL at Scully, D749 on train with Demmler inbound block).'
         );
     } elseif ($stopped_at_staging) {
         warm_start_log('');
@@ -1544,9 +1095,7 @@ function hart_run($dbc, $config)
     }
 
     $summary = warm_start_summarize($dbc);
-    $summary['weigh_failed'] = $weigh_failed;
     $summary['stopped_at_staging'] = $stopped_at_staging;
-    $summary['stopped_at_locals'] = $stopped_at_locals;
     $summary['stopped_at_stg_scully'] = $stopped_at_stg_scully;
     $summary['staging_backlog'] = $staging_backlog;
     $summary['stg_scully_backlog'] = $stopped_at_stg_scully
